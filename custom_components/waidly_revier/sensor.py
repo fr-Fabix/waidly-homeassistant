@@ -21,7 +21,7 @@ from .coordinator import WaidlyCoordinator
 from .data import RevierState
 from .entity import WaidlyEntity
 
-# Icon je Wildart (Fallback Pfote)
+# Icon je Wildart (Standard: Pfote)
 WILDART_ICONS = {
     "Rehwild": "mdi:deer",
     "Rotwild": "mdi:deer",

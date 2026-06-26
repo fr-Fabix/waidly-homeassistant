@@ -2,7 +2,7 @@
 
 DOMAIN = "waidly_revier"
 
-# Öffentliche Web-Revier-API (read-only, Code-authentifiziert).
+# Öffentliche Web-Revier-API (nur lesend, code-authentifiziert).
 API_URL = "https://oylxomwmjidzujimhqcs.supabase.co/functions/v1/web-revier"
 # Öffentlicher Supabase-Anon-Key (identisch mit dem der Web-App app.waidly.de).
 ANON_KEY = (
