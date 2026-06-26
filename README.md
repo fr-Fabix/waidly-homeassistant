@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="icon.png" width="120" alt="Waidly">
+  <img src="https://raw.githubusercontent.com/fr-Fabix/waidly-homeassistant/main/icon.png" width="120" alt="Waidly">
 </p>
 
 <h1 align="center">Waidly Online-Revier — Home Assistant</h1>
