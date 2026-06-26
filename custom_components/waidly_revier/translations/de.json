@@ -1,0 +1,28 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Waidly Online-Revier",
+        "description": "Gib deinen Revier-Zugangscode ein (ein Lese-Code genügt).",
+        "data": { "code": "Zugangscode" }
+      }
+    },
+    "error": {
+      "invalid_code": "Code ungültig, inaktiv oder Revier nicht verfügbar.",
+      "rate_limited": "Zu viele Versuche. Bitte 15 Minuten warten.",
+      "cannot_connect": "Verbindung zur Waidly-API fehlgeschlagen."
+    },
+    "abort": { "already_configured": "Dieses Revier ist bereits eingerichtet." }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Optionen",
+        "data": {
+          "scan_interval": "Abruf-Intervall (Sekunden)",
+          "inactivity_days": "Inaktivitäts-Schwelle (Tage)"
+        }
+      }
+    }
+  }
+}

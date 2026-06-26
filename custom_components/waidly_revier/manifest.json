@@ -1,0 +1,13 @@
+{
+  "domain": "waidly_revier",
+  "name": "Waidly Online-Revier",
+  "version": "0.1.0",
+  "config_flow": true,
+  "documentation": "https://github.com/fr-Fabix/waidly-homeassistant",
+  "issue_tracker": "https://github.com/fr-Fabix/waidly-homeassistant/issues",
+  "codeowners": ["@fr-Fabix"],
+  "dependencies": [],
+  "requirements": [],
+  "iot_class": "cloud_polling",
+  "integration_type": "hub"
+}

@@ -1,0 +1,72 @@
+# ============================================================
+# Waidly Online-Revier — Dashboard-Karten
+# Zum Einfügen in eine Lovelace-View. Voraussetzungen (HACS):
+#   auto-entities, mushroom, card-mod (alle bereits installiert).
+# Entity-IDs ggf. an deinen Revier-Namen anpassen (Suffix nach
+# "waidly_revier_<revier>_"). Beispiele unten nutzen Platzhalter *.
+# ============================================================
+
+# ---- 1) Revier-Überblick ----
+- type: entities
+  title: Revier — Überblick
+  show_header_toggle: false
+  entities:
+    - entity: sensor.strecke
+      name: Strecke (Jagdjahr)
+    - entity: sensor.letzte_erlegung
+      name: Letzte Erlegung
+    - entity: sensor.anblicke
+      name: Anblicke
+    - entity: sensor.wildbret
+      name: Wildbret
+    - entity: sensor.einrichtungen
+      name: Einrichtungen
+    - entity: sensor.wartung_notig
+      name: Wartung nötig
+    - entity: binary_sensor.inaktiv
+      name: Inaktiv?
+    - entity: sensor.letzte_aktivitat
+      name: Letzte Aktivität
+
+# ---- 2) Einrichtungs-Status (Ampel nach Zustand, Defekte oben) ----
+- type: custom:auto-entities
+  card:
+    type: grid
+    columns: 2
+    square: false
+  card_param: cards
+  sort:
+    method: attribute
+    attribute: wartung_noetig
+    reverse: true
+  filter:
+    include:
+      - entity_id: sensor.einrichtung_*
+        options:
+          type: custom:mushroom-template-card
+          entity: this.entity_id
+          primary: "{{ state_attr(entity,'friendly_name') | regex_replace('^.*Einrichtung ', '') }}"
+          secondary: "{{ state_attr(entity,'typ') }} · {{ states(entity) }}"
+          icon: >-
+            {% set t = state_attr(entity,'typ') %}
+            {% if t == 'Wildkamera' %}mdi:cctv
+            {% elif t == 'Kirrung' %}mdi:bowl-mix
+            {% elif t == 'Hochsitz' %}mdi:tower-fire
+            {% elif t == 'Kanzel' %}mdi:home-roof
+            {% elif t == 'Leitersitz' %}mdi:ladder
+            {% else %}mdi:map-marker{% endif %}
+          icon_color: >-
+            {% set z = states(entity) | lower %}
+            {% if z in ['gut','sehr gut','neu','ok'] %}green
+            {% elif z == 'mittel' %}orange
+            {% elif z in ['unbekannt',''] %}grey
+            {% else %}red{% endif %}
+          tap_action:
+            action: more-info
+
+# ---- 3) Jagdkalender ----
+- type: calendar
+  title: Jagdkalender
+  initial_view: listMonth
+  entities:
+    - calendar.jagdkalender
