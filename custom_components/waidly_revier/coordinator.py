@@ -7,8 +7,9 @@ from datetime import timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import InvalidCode, RateLimited, SessionExpired, WaidlyApiError, WebRevierClient
@@ -16,6 +17,7 @@ from .const import (
     CONF_CODE,
     CONF_INACTIVITY_DAYS,
     CONF_SCAN_INTERVAL,
+    CONF_WIND_ENTITY,
     DEFAULT_INACTIVITY_DAYS,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
@@ -85,9 +87,39 @@ class WaidlyCoordinator(DataUpdateCoordinator[RevierState]):
         except WaidlyApiError as err:
             raise UpdateFailed(str(err)) from err
 
-        state = compute_revier_state(self._build_raw())
+        state = compute_revier_state(self._build_raw(), current_wind=self._current_wind())
         self._first_load = False
         return state
+
+    # ---- Wind-Eignung ----
+
+    @callback
+    def _current_wind(self) -> str | None:
+        ent = self.entry.options.get(CONF_WIND_ENTITY)
+        if not ent:
+            return None
+        st = self.hass.states.get(ent)
+        if st is None or st.state in (None, "", "unknown", "unavailable"):
+            return None
+        return st.state
+
+    @callback
+    def async_setup_wind_tracking(self) -> None:
+        """Bei Windrichtungs-Änderung die Eignung live neu berechnen (ohne API-Call)."""
+        ent = self.entry.options.get(CONF_WIND_ENTITY)
+        if not ent:
+            return
+
+        @callback
+        def _wind_changed(event: Any) -> None:
+            if self.data is not None:
+                self.async_set_updated_data(
+                    compute_revier_state(self._build_raw(), current_wind=self._current_wind())
+                )
+
+        self.entry.async_on_unload(
+            async_track_state_change_event(self.hass, [ent], _wind_changed)
+        )
 
     # ---- API-Aufrufe ----
 

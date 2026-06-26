@@ -61,6 +61,7 @@ class Einrichtung:
 
     raw: dict[str, Any]
     erlegungen_count: int = 0  # via spot_id verknüpfte Erlegungen
+    geeignet: bool | None = None  # bei aktueller Windrichtung geeignet (None = unbekannt)
 
     @property
     def id(self) -> str:
@@ -89,6 +90,14 @@ class Einrichtung:
     def is_camera(self) -> bool:
         return self.typ in CAMERA_TYPES
 
+    def geeignet_bei(self, current_wind: str | None) -> bool | None:
+        """True, wenn die aktuelle Windrichtung zu den geeigneten passt."""
+        wg = (self.raw.get("suitable_wind_directions") or "").strip()
+        if not current_wind or not wg:
+            return None
+        dirs = [d.strip().upper() for d in wg.split(",") if d.strip()]
+        return current_wind.strip().upper() in dirs
+
     def attributes(self) -> dict[str, Any]:
         r = self.raw
         return {
@@ -96,6 +105,7 @@ class Einrichtung:
             "zustand": self.zustand,
             "wartung_noetig": self.needs_maintenance,
             "wind_geeignet": r.get("suitable_wind_directions") or None,
+            "geeignet_jetzt": self.geeignet,
             "hoehe_m": r.get("hoehe"),
             "ueberdacht": r.get("is_covered"),
             "kapazitaet": r.get("kapazitaet"),
@@ -136,6 +146,9 @@ class RevierState:
     wartung_count: int = 0
     wartung_liste: list[dict[str, str]] = field(default_factory=list)
     wildkamera_count: int = 0
+    # Wind-Eignung (gegen konfigurierte Windrichtungs-Entität)
+    current_wind: str | None = None
+    geeignete_einrichtungen: list[str] = field(default_factory=list)
     # Inaktivität
     tage_seit_aktivitaet: int | None = None
 
@@ -144,6 +157,7 @@ def compute_revier_state(
     raw: dict[str, Any],
     *,
     today: date | None = None,
+    current_wind: str | None = None,
 ) -> RevierState:
     """Wandelt die rohe `validate`-Antwort in einen aggregierten RevierState."""
     today = today or datetime.now(timezone.utc).date()
@@ -174,6 +188,12 @@ def compute_revier_state(
             state.wartung_liste.append({"name": ein.name, "zustand": ein.zustand})
         if ein.is_camera:
             state.wildkamera_count += 1
+
+    # Wind-Eignung je Einrichtung gegen die aktuelle Windrichtung
+    state.current_wind = current_wind
+    for ein in state.einrichtungen:
+        ein.geeignet = ein.geeignet_bei(current_wind)
+    state.geeignete_einrichtungen = [e.name for e in state.einrichtungen if e.geeignet]
 
     # --- Einträge (Erlegungen + Anblicke) ---
     erlegungen = [e for e in entries if e.get("entry_type") == "Erlegung"]

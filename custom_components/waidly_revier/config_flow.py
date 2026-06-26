@@ -13,12 +13,14 @@ from homeassistant.config_entries import (
 )
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import EntitySelector, EntitySelectorConfig
 
 from .api import InvalidCode, RateLimited, WaidlyApiError, WebRevierClient
 from .const import (
     CONF_CODE,
     CONF_INACTIVITY_DAYS,
     CONF_SCAN_INTERVAL,
+    CONF_WIND_ENTITY,
     DEFAULT_INACTIVITY_DAYS,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
@@ -93,6 +95,10 @@ class WaidlyOptionsFlow(OptionsFlow):
                             CONF_INACTIVITY_DAYS, DEFAULT_INACTIVITY_DAYS
                         ),
                     ): vol.All(vol.Coerce(int), vol.Range(min=1, max=365)),
+                    vol.Optional(
+                        CONF_WIND_ENTITY,
+                        description={"suggested_value": opts.get(CONF_WIND_ENTITY)},
+                    ): EntitySelector(EntitySelectorConfig(domain=["sensor", "weather"])),
                 }
             ),
         )

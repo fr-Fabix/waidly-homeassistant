@@ -148,6 +148,21 @@ SENSORS: tuple[WaidlySensorDescription, ...] = (
         native_unit_of_measurement="Stück",
         value_fn=lambda s: s.wildkamera_count,
     ),
+    WaidlySensorDescription(
+        key="geeignete_einrichtungen",
+        name="Geeignete Einrichtungen (Wind)",
+        icon="mdi:weather-windy",
+        value_fn=lambda s: (
+            ", ".join(s.geeignete_einrichtungen)
+            if s.geeignete_einrichtungen
+            else ("—" if s.current_wind else "kein Wind konfiguriert")
+        ),
+        attr_fn=lambda s: {
+            "aktueller_wind": s.current_wind,
+            "anzahl": len(s.geeignete_einrichtungen),
+            "einrichtungen": s.geeignete_einrichtungen,
+        },
+    ),
 )
 
 

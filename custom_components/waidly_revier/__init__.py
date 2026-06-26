@@ -23,6 +23,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: WaidlyConfigEntry) -> bo
     """Revier-Eintrag einrichten."""
     coordinator = WaidlyCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
+    coordinator.async_setup_wind_tracking()
     entry.runtime_data = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

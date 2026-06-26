@@ -15,6 +15,7 @@ ANON_KEY = (
 CONF_CODE = "code"
 CONF_INACTIVITY_DAYS = "inactivity_days"
 CONF_SCAN_INTERVAL = "scan_interval"
+CONF_WIND_ENTITY = "wind_entity"
 
 DEFAULT_SCAN_INTERVAL = 900  # 15 Minuten (refresh ist günstig, kein Rate-Limit)
 DEFAULT_INACTIVITY_DAYS = 14
