@@ -48,6 +48,15 @@ def _parse_dt(value: Any) -> datetime | None:
         return None
 
 
+def _as_utc(value: datetime | None) -> datetime | None:
+    """Macht ein datetime zeitzonenbewusst (naive Werte gelten als UTC)."""
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
+
+
 def _num(value: Any) -> float:
     try:
         return float(value)
@@ -122,6 +131,70 @@ class Einrichtung:
 
 
 @dataclass
+class Sperrflaeche:
+    """Eine geteilte Sperrflaeche (nicht bejagbare Flaeche) inkl. Gueltigkeit."""
+
+    raw: dict[str, Any]
+
+    @property
+    def id(self) -> str:
+        return str(self.raw.get("id") or self.raw.get("local_sperrflaeche_id"))
+
+    @property
+    def name(self) -> str:
+        return (self.raw.get("name") or "").strip() or "Sperrfläche"
+
+    @property
+    def grund(self) -> str:
+        return (self.raw.get("grund") or "").strip() or "Unbekannt"
+
+    @property
+    def color_hex(self) -> str | None:
+        return (self.raw.get("color_hex") or "").strip() or None
+
+    @property
+    def dauerhaft(self) -> bool:
+        return bool(self.raw.get("dauerhaft"))
+
+    @property
+    def gueltig_von(self) -> str | None:
+        return self.raw.get("gueltig_von") or None
+
+    @property
+    def gueltig_bis(self) -> str | None:
+        return self.raw.get("gueltig_bis") or None
+
+    def is_active(self, now: datetime | None = None) -> bool:
+        """Aktiv, wenn dauerhaft oder jetzt (UTC) im Gueltigkeitszeitraum liegt.
+
+        Fehlende/leere Grenzen werden tolerant als offen behandelt: fehlt
+        `gueltig_von`, gilt nach unten keine Grenze, fehlt `gueltig_bis`,
+        keine nach oben. Zeitangaben ohne Zeitzone werden als UTC gewertet.
+        """
+        if self.dauerhaft:
+            return True
+        now = now or datetime.now(timezone.utc)
+        von = _as_utc(_parse_dt(self.raw.get("gueltig_von")))
+        bis = _as_utc(_parse_dt(self.raw.get("gueltig_bis")))
+        if von is not None and now < von:
+            return False
+        if bis is not None and now > bis:
+            return False
+        return True
+
+    def summary(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "grund": self.grund,
+            "color_hex": self.color_hex,
+            "dauerhaft": self.dauerhaft,
+            "gueltig_von": self.gueltig_von,
+            "gueltig_bis": self.gueltig_bis,
+            "aktiv": self.is_active(),
+        }
+
+
+@dataclass
 class RevierState:
     """Aggregierter Zustand eines Reviers, von den Entities gelesen."""
 
@@ -149,6 +222,9 @@ class RevierState:
     # Wind-Eignung (gegen konfigurierte Windrichtungs-Entität)
     current_wind: str | None = None
     geeignete_einrichtungen: list[str] = field(default_factory=list)
+    # Sperrflächen (nicht bejagbare Flächen)
+    sperrflaechen: list[Sperrflaeche] = field(default_factory=list)
+    aktive_sperrflaechen_count: int = 0
     # Inaktivität
     tage_seit_aktivitaet: int | None = None
 
@@ -167,6 +243,7 @@ def compute_revier_state(
     revier = raw.get("revier") or {}
     spots = raw.get("spots") or []
     entries = raw.get("entries") or []
+    sperrflaechen = raw.get("sperrflaechen") or []
 
     state = RevierState(revier=revier, jagdjahr=jj_label, all_entries=list(entries))
 
@@ -194,6 +271,14 @@ def compute_revier_state(
     for ein in state.einrichtungen:
         ein.geeignet = ein.geeignet_bei(current_wind)
     state.geeignete_einrichtungen = [e.name for e in state.einrichtungen if e.geeignet]
+
+    # --- Sperrflächen (nicht bejagbare Flächen) ---
+    now_utc = datetime.now(timezone.utc)
+    for sp in sperrflaechen:
+        flaeche = Sperrflaeche(raw=sp)
+        state.sperrflaechen.append(flaeche)
+        if flaeche.is_active(now_utc):
+            state.aktive_sperrflaechen_count += 1
 
     # --- Einträge (Erlegungen + Anblicke) ---
     erlegungen = [e for e in entries if e.get("entry_type") == "Erlegung"]

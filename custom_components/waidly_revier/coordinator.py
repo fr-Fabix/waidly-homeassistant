@@ -50,6 +50,7 @@ class WaidlyCoordinator(DataUpdateCoordinator[RevierState]):
         self._revier: dict[str, Any] = {}
         self._entries: dict[str, dict[str, Any]] = {}
         self._spots: dict[str, dict[str, Any]] = {}
+        self._sperr: dict[str, dict[str, Any]] = {}
         self._revier_id: str | None = None
         self._session_token: str | None = None
         self._last_load: str = "1970-01-01T00:00:00Z"
@@ -132,12 +133,16 @@ class WaidlyCoordinator(DataUpdateCoordinator[RevierState]):
 
         new_entries = {e["id"]: e for e in (data.get("entries") or []) if e.get("id")}
         new_spots = {s["id"]: s for s in (data.get("spots") or []) if s.get("id")}
+        new_sperr = {
+            s["id"]: s for s in (data.get("sperrflaechen") or []) if s.get("id")
+        }
 
         if not self._first_load:
             self._detect_events(new_entries, new_spots)
 
         self._entries = new_entries
         self._spots = new_spots
+        self._sperr = new_sperr
         self._update_zustand_cache()
 
     async def _do_refresh(self) -> None:
@@ -150,6 +155,7 @@ class WaidlyCoordinator(DataUpdateCoordinator[RevierState]):
         # Kopien für Event-Vergleich anlegen
         merged_entries = dict(self._entries)
         merged_spots = dict(self._spots)
+        merged_sperr = dict(self._sperr)
 
         for e in updates.get("entries") or []:
             if e.get("id"):
@@ -157,22 +163,29 @@ class WaidlyCoordinator(DataUpdateCoordinator[RevierState]):
         for s in updates.get("spots") or []:
             if s.get("id"):
                 merged_spots[s["id"]] = s
+        for sp in updates.get("sperrflaechen") or []:
+            if sp.get("id"):
+                merged_sperr[sp["id"]] = sp
         if updates.get("revier"):
             self._revier = {**self._revier, **updates["revier"]}
 
-        # Löschungen anwenden
+        # Löschungen anwenden. Das Backend liefert die Kurznamen der Tabellen
+        # (`entries`, `spots`, `sperrflaechen`), nicht die DB-Namen mit Präfix.
         for d in data.get("deletions") or []:
             table, rec = d.get("table"), d.get("record_id")
-            if table == "shared_entries":
+            if table == "entries":
                 merged_entries.pop(rec, None)
-            elif table == "shared_spots":
+            elif table == "spots":
                 merged_spots.pop(rec, None)
+            elif table == "sperrflaechen":
+                merged_sperr.pop(rec, None)
 
         if not self._first_load:
             self._detect_events(merged_entries, merged_spots)
 
         self._entries = merged_entries
         self._spots = merged_spots
+        self._sperr = merged_sperr
         self._last_load = data.get("server_time") or self._last_load
         self._update_zustand_cache()
 
@@ -257,4 +270,5 @@ class WaidlyCoordinator(DataUpdateCoordinator[RevierState]):
             "revier": self._revier,
             "spots": list(self._spots.values()),
             "entries": list(self._entries.values()),
+            "sperrflaechen": list(self._sperr.values()),
         }

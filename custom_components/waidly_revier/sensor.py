@@ -149,6 +149,20 @@ SENSORS: tuple[WaidlySensorDescription, ...] = (
         value_fn=lambda s: s.wildkamera_count,
     ),
     WaidlySensorDescription(
+        key="sperrflaechen",
+        name="Sperrflächen",
+        icon="mdi:block-helper",
+        native_unit_of_measurement="Stück",
+        value_fn=lambda s: len(s.sperrflaechen),
+        attr_fn=lambda s: {
+            "aktiv": s.aktive_sperrflaechen_count,
+            "namen": [sp.name for sp in s.sperrflaechen],
+            "gruende": [sp.grund for sp in s.sperrflaechen],
+            "farben": [sp.color_hex for sp in s.sperrflaechen],
+            "flaechen": [sp.summary() for sp in s.sperrflaechen],
+        },
+    ),
+    WaidlySensorDescription(
         key="geeignete_einrichtungen",
         name="Geeignete Einrichtungen (Wind)",
         icon="mdi:weather-windy",

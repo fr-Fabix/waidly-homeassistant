@@ -20,7 +20,13 @@ async def async_setup_entry(
     entry: WaidlyConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    async_add_entities([WaidlyInaktivSensor(entry.runtime_data)])
+    coordinator = entry.runtime_data
+    async_add_entities(
+        [
+            WaidlyInaktivSensor(coordinator),
+            WaidlySperrflaecheAktivSensor(coordinator),
+        ]
+    )
 
 
 class WaidlyInaktivSensor(WaidlyEntity, BinarySensorEntity):
@@ -46,4 +52,30 @@ class WaidlyInaktivSensor(WaidlyEntity, BinarySensorEntity):
         return {
             "tage_seit_aktivitaet": self.coordinator.data.tage_seit_aktivitaet,
             "schwelle_tage": self.coordinator.inactivity_days,
+        }
+
+
+class WaidlySperrflaecheAktivSensor(WaidlyEntity, BinarySensorEntity):
+    """An, wenn mindestens eine Sperrfläche aktuell gilt."""
+
+    _attr_name = "Aktive Sperrfläche"
+    _attr_icon = "mdi:block-helper"
+    _attr_device_class = BinarySensorDeviceClass.SAFETY
+
+    def __init__(self, coordinator) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.revier_id}_sperrflaeche_aktiv"
+
+    @property
+    def is_on(self) -> bool:
+        return self.coordinator.data.aktive_sperrflaechen_count > 0
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        state = self.coordinator.data
+        aktive = [sp.name for sp in state.sperrflaechen if sp.is_active()]
+        return {
+            "aktive_count": state.aktive_sperrflaechen_count,
+            "gesamt": len(state.sperrflaechen),
+            "aktive_namen": aktive,
         }
